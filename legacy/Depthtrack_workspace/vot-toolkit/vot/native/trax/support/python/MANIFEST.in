@@ -1,2 +1,0 @@
-include VERSION
-global-include *.c *.h *.cpp
