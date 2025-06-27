@@ -1,0 +1,35 @@
+# conda create -n promft python=3.11
+# conda activate promft
+# pip install -r requirements.txt
+
+-f https://download.pytorch.org/whl/torch_stable.html
+
+# torch==1.7.0+cu102
+# torch==2.0.0+cu117
+torch==2.3.1+cu121
+torchvision==0.18.1
+pyyaml
+easydict
+cython
+opencv-python
+pandas
+tqdm
+pycocotools
+jpeg4py
+scipy
+# timm==0.5.4
+timm
+# tb-nightly # no need for tb-nightly or tensorboardX. use torch.utils.tensorboard instead.
+tensorboard
+lmdb
+visdom
+pillow
+# git+https://github.com/votchallenge/vot-toolkit-python
+packaging
+# humanize
+# pympler
+psutil
+vot-toolkit
+vot-trax
+fvcore
+webcolors

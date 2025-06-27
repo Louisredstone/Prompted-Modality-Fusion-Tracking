@@ -1,0 +1,15 @@
+[tool.pyright]
+exclude = ["**/node_modules",
+    "**/__pycache__",
+    "datasets",
+    "assets",
+    "configs",
+    "figures",
+    "FLOPS_workspace",
+    "legacy",
+    "models",
+    "pretrained",
+    "RGBT_workspace",
+    "tensorboard",
+    "work_dirs"
+  ]

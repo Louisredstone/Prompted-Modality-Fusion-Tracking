@@ -1,0 +1,10 @@
+.vscode/
+.idea/
+
+__pycache__/
+*.pyc
+
+originalresults/
+work_dirs/
+FLOPS_workspace/
+tensorboard/

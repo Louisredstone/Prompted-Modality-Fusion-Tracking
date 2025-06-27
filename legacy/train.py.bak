@@ -1,0 +1,106 @@
+import os
+import argparse
+import random
+import torch
+import datetime
+
+def parse_args():
+    """
+    args for training.
+    """
+    parser = argparse.ArgumentParser(description='Parse args for training')
+    # parser.add_argument('--script', type=str,  default='vipt', help='training script name')
+    parser.add_argument('config', type=str, help='yaml configure file path')
+    parser.add_argument('--title', type=str, default='train', help='title of task (determining work_dir)')
+    parser.add_argument('--mode', type=str, choices=["single", "parallel", "dist"], default="parallel",
+                        help="train on single gpu or multiple gpus (parallel)")
+    # parser.add_argument('--nproc_per_node', type=int, default=torch.cuda.device_count(), help="number of GPUs per node")  # specify when mode is multiple
+    parser.add_argument('--use_lmdb', type=int, choices=[0, 1], default=0)  # whether datasets are in lmdb format
+    # parser.add_argument('--script_prv', type=str, help='training script name')
+    # parser.add_argument('--config_prv', type=str, default='baseline', help='yaml configure file name')
+    parser.add_argument('--use_wandb', type=int, choices=[0, 1], default=0)  # whether to use wandb
+    # for knowledge distillation
+    parser.add_argument('--distill', type=int, choices=[0, 1], default=0)  # whether to use knowledge distillation
+    parser.add_argument('--script_teacher', type=str, help='teacher script name')
+    parser.add_argument('--config_teacher', type=str, help='teacher yaml configure file name')
+
+    # for multiple machines
+    parser.add_argument('--rank', type=int, help='Rank of the current process.')
+    parser.add_argument('--world-size', type=int, help='Number of processes participating in the job.')
+    parser.add_argument('--ip', type=str, default='127.0.0.1', help='IP of the current rank 0.')
+    parser.add_argument('--port', type=int, default='20000', help='Port of the current rank 0.')
+    parser.add_argument('--cuda', type=str, default='0,2', help='CUDA_VISIBLE_DEVICES')
+
+    args = parser.parse_args()
+
+    return args
+
+
+def main():
+    args = parse_args()
+    if args.cuda == 'all':
+        nproc_per_node = torch.cuda.device_count()
+        CUDA_VISIBLE_DEVICES = [str(i) for i in range(nproc_per_node)]
+        os.environ["CUDA_VISIBLE_DEVICES"]=','.join(CUDA_VISIBLE_DEVICES)
+    else:
+        CUDA_VISIBLE_DEVICES = [s.strip() for s in args.cuda.split(',')]
+        nproc_per_node = len(CUDA_VISIBLE_DEVICES)
+        os.environ["CUDA_VISIBLE_DEVICES"]=','.join(CUDA_VISIBLE_DEVICES)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    work_dir = f"work_dirs/{timestamp}-{args.title}"
+    if args.mode == "single":
+        train_cmd = f"python lib/train/run_training.py " \
+                    f"--script vipt " \
+                    f"--config {args.config} " \
+                    f"--save_dir {work_dir} " \
+                    f"--use_lmdb {args.use_lmdb} " \
+                    f"--distill {args.distill} " \
+                    f"--script_teacher {args.script_teacher} " \
+                    f"--config_teacher {args.config_teacher} " \
+                    f"--use_wandb {args.use_wandb}"
+        print(f"Running command: `{train_cmd}`")
+        print(f"working directory: {work_dir}")
+        os.system(train_cmd)
+    elif args.mode == "parallel":
+        train_cmd = f"python -m torch.distributed.launch " \
+                    f"--nproc_per_node {nproc_per_node} " \
+                    f"--master_port {random.randint(10000, 50000)} " \
+                    f"lib/train/run_training.py " \
+                    f"--script vipt " \
+                    f"--config {args.config} " \
+                    f"--save_dir {work_dir} " \
+                    f"--use_lmdb {args.use_lmdb} " \
+                    f"--use_wandb {args.use_wandb} " \
+                    f"--distill {args.distill} " \
+                    f"--script_teacher {args.script_teacher} " \
+                    f"--config_teacher {args.config_teacher}"
+        print(f"Running command: `{train_cmd}`")
+        print(f"working directory: {work_dir}")
+        os.system(train_cmd)
+    elif args.mode == "dist":
+        raise NotImplementedError()
+        train_cmd = f"python -m torch.distributed.launch " \
+            f"--nproc_per_node {nproc_per_node} " \
+            f"--master_addr {args.ip} " \
+            f"--master_port {args.port} " \
+            f"--nnodes {args.world_size} " \
+            f"--node_rank {args.rank} " \
+            f"lib/train/run_training.py " \
+            f"--script vipt " \
+            f"--config {args.config} " \
+            f"--save_dir {work_dir} " \
+            f"--use_lmdb {args.use_lmdb} " \
+            f"--use_wandb {args.use_wandb} " \
+            f"--distill {args.distill} " \
+            f"--script_teacher {args.script_teacher} " \
+            f"--config_teacher {args.config_teacher}"
+        print(f"Running command: `{train_cmd}`")
+        print(f"working directory: {work_dir}")
+        os.system(train_cmd)
+    else:
+        raise ValueError("mode should be 'single' or 'parallel' or 'dist'.")
+    
+
+
+if __name__ == "__main__":
+    main()
